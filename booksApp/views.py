@@ -5,7 +5,7 @@ import requests
 
 from django.shortcuts import render
 
-from rest_framework import viewsets, permissions, filters, status
+from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -18,7 +18,7 @@ from .serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
     ReviewSerializer, FollowSerializer, MessageSerializer,
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
-    BookRankingSerializer, ActivitySerializer
+    BookRankingSerializer, ActivitySerializer, RegisterSerializer, ProfileSerializer
 )
 
 
@@ -26,6 +26,39 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
+
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [permissions.AllowAny]
+    serializer_class = RegisterSerializer
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def me(request):
+    user = request.user
+    return Response({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+    })
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([permissions.IsAuthenticated])
+def profile_view(request):
+    profile = request.user.profile
+
+    if request.method == 'GET':
+        serializer = ProfileSerializer(profile)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
 
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
@@ -156,17 +189,17 @@ class ActivityViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @api_view(['POST'])
-@permission_classes([permissions.AllowAny])
+@permission_classes([permissions.IsAuthenticatedOrReadOnly])
 def upload_cover(request):
     """
-    Wysyła obraz do Supabase Storage
+    Uploaduje obraz okładki do Supabase Storage
     """
     file = request.FILES.get('file')
     if not file:
         return Response({'error': 'Brak pliku'}, status=status.HTTP_400_BAD_REQUEST)
 
     SUPABASE_URL = os.getenv('SUPABASE_URL')
-    SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET', 'covers')
+    SUPABASE_BUCKET = os.getenv('SUPABASE_COVERS_BUCKET', 'covers')
     SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
     filename = f"{uuid.uuid4()}_{file.name}"
@@ -192,3 +225,49 @@ def upload_cover(request):
     public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{filename}"
 
     return Response({'url': public_url}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def upload_avatar(request):
+    """
+    Uploaduje zdjęcie profilowe do Supabase Storage
+    """
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'error': 'Brak pliku'}, status=status.HTTP_400_BAD_REQUEST)
+
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_BUCKET = os.getenv('SUPABASE_AVATAR_BUCKET', 'avatars')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+
+    filename = f"{uuid.uuid4()}_{file.name}"
+    upload_url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{filename}"
+
+    content_type, _ = mimetypes.guess_type(file.name)
+    if content_type is None:
+        content_type = "application/octet-stream"
+
+    headers = {
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": content_type,
+    }
+
+    response = requests.post(upload_url, headers=headers, data=file.read())
+
+    if response.status_code not in (200, 201):
+        return Response(
+            {
+                'error': 'Nie udało się wysłać pliku',
+                'details': response.text
+            },
+            status=response.status_code
+        )
+
+    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{filename}"
+
+    profile = request.user.profile
+    profile.avatar = public_url
+    profile.save()
+
+    return Response({'avatar_url': public_url}, status=status.HTTP_201_CREATED)
