@@ -64,6 +64,43 @@ class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
     serializer_class = AuthorSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['first_name', 'last_name']
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def add_author(request):
+    first_name = request.data.get('first_name')
+    last_name = request.data.get('last_name')
+    bio = request.data.get('bio', '')
+
+    if not first_name or not last_name:
+        return Response(
+            {'error': 'Imię i nazwisko są wymagane.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Sprawdzenie, czy autor już istnieje
+    existing = Author.objects.filter(
+        first_name__iexact=first_name.strip(),
+        last_name__iexact=last_name.strip()
+    ).first()
+
+    if existing:
+        return Response(
+            {'error': 'Autor już istnieje.', 'id': existing.id},
+            status=status.HTTP_409_CONFLICT
+        )
+
+    author = Author.objects.create(
+        first_name=first_name.strip(),
+        last_name=last_name.strip(),
+        bio=bio.strip()
+    )
+
+    serializer = AuthorSerializer(author)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class GenreViewSet(viewsets.ModelViewSet):
