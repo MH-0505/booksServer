@@ -12,13 +12,14 @@ from django.contrib.auth.models import User
 from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
-    BookRanking, Activity
+    BookRanking, Activity, Publisher
 )
 from .serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
     ReviewSerializer, FollowSerializer, MessageSerializer,
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
-    BookRankingSerializer, ActivitySerializer, RegisterSerializer, ProfileSerializer
+    BookRankingSerializer, ActivitySerializer, RegisterSerializer, ProfileSerializer,
+    PublisherSerializer
 )
 
 
@@ -81,7 +82,6 @@ def add_author(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Sprawdzenie, czy autor już istnieje
     existing = Author.objects.filter(
         first_name__iexact=first_name.strip(),
         last_name__iexact=last_name.strip()
@@ -107,7 +107,15 @@ class GenreViewSet(viewsets.ModelViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ['name']
 
+class PublisherViewSet(viewsets.ModelViewSet):
+    queryset = Publisher.objects.all()
+    serializer_class = PublisherSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all().select_related('added_by').prefetch_related('authors', 'genres')
@@ -118,7 +126,7 @@ class BookViewSet(viewsets.ModelViewSet):
     ordering_fields = ['title', 'published_year']
 
     def perform_create(self, serializer):
-        cover_file = self.request.FILES.get('cover')
+        cover_file = self.request.FILES.get('coverFile')
         cover_url = None
 
         if cover_file:

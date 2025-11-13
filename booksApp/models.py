@@ -28,6 +28,13 @@ class Genre(models.Model):
     def __str__(self):
         return self.name
 
+class Publisher(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
 
 class Book(models.Model):
     HARDCOVER = 'hardcover'
@@ -52,7 +59,9 @@ class Book(models.Model):
     authors = models.ManyToManyField('Author', related_name='books')
     genres = models.ManyToManyField('Genre', related_name='books')
     description = models.TextField(blank=True, null=True)
+    pages = models.PositiveIntegerField(blank=True, null=True)
     isbn = models.CharField(max_length=13, unique=True)
+    publisher = models.ForeignKey('Publisher', on_delete=models.SET_NULL, null=True, related_name='books')
     published_year = models.PositiveIntegerField(blank=True, null=True)
     edition_type = models.CharField(
         max_length=20,

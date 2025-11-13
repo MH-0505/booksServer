@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
-    BookRanking, Activity, Profile
+    BookRanking, Activity, Profile, Publisher
 )
 
 
@@ -56,18 +56,31 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ['id', 'name']
 
+class PublisherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Publisher
+        fields = ['id', 'name', 'description']
 
 class BookSerializer(serializers.ModelSerializer):
-    authors = AuthorSerializer(many=True, read_only=True)
-    genres = GenreSerializer(many=True, read_only=True)
-    average_rating = serializers.FloatField(read_only=True)
+    authors = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all(), many=True)
+    genres = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True)
+    publisher_id = serializers.PrimaryKeyRelatedField(
+        source="publisher",
+        queryset=Publisher.objects.all(),
+        write_only=True
+    )
+
+    publisher = PublisherSerializer(read_only=True)
     added_by = UserSerializer(read_only=True)
+    average_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Book
         fields = [
-            'id', 'title', 'authors', 'genres', 'description', 'isbn',
-            'published_year', 'cover_url', 'added_by', 'average_rating'
+            'id', 'title', 'authors', 'genres', 'description',
+            'pages', 'isbn', 'publisher', 'publisher_id',
+            'published_year', 'edition_type', 'cover_url',
+            'added_by', 'average_rating'
         ]
 
 
