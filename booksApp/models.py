@@ -15,7 +15,7 @@ class Profile(models.Model):
 
 class Author(models.Model):
     first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100, blank=True)
     bio = models.TextField(blank=True, null=True)
 
     def __str__(self):
@@ -88,7 +88,7 @@ class Book(models.Model):
 class Review(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reviews')
-    rating = models.PositiveSmallIntegerField(default=0)  # np. 1–5
+    rating = models.PositiveSmallIntegerField(default=0)    # 1-5
     content = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

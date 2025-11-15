@@ -62,27 +62,60 @@ class PublisherSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description']
 
 class BookSerializer(serializers.ModelSerializer):
-    authors = serializers.PrimaryKeyRelatedField(queryset=Author.objects.all(), many=True)
-    genres = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all(), many=True)
-    publisher_id = serializers.PrimaryKeyRelatedField(
-        source="publisher",
-        queryset=Publisher.objects.all(),
-        write_only=True
-    )
+        # write
+        author_ids = serializers.PrimaryKeyRelatedField(
+            source="authors",
+            queryset=Author.objects.all(),
+            many=True,
+            write_only=True
+        )
+        genre_ids = serializers.PrimaryKeyRelatedField(
+            source="genres",
+            queryset=Genre.objects.all(),
+            many=True,
+            write_only=True
+        )
 
-    publisher = PublisherSerializer(read_only=True)
-    added_by = UserSerializer(read_only=True)
+        publisher_id = serializers.PrimaryKeyRelatedField(
+            source="publisher",
+            queryset=Publisher.objects.all(),
+            write_only=True
+        )
+
+        # read
+        authors = AuthorSerializer(many=True, read_only=True)
+        genres = GenreSerializer(many=True, read_only=True)
+        publisher = PublisherSerializer(read_only=True)
+        added_by = UserSerializer(read_only=True)
+        average_rating = serializers.FloatField(read_only=True)
+
+        class Meta:
+            model = Book
+            fields = [
+                'id', 'title',
+                'authors', 'genres',
+                'author_ids', 'genre_ids',
+                'description', 'pages', 'isbn',
+                'publisher', 'publisher_id',
+                'published_year', 'edition_type', 'cover_url',
+                'added_by', 'average_rating'
+            ]
+
+class BookCompactSerializer(serializers.ModelSerializer):
+    authors = serializers.StringRelatedField(many=True)
+    genres = serializers.StringRelatedField(many=True)
     average_rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Book
         fields = [
-            'id', 'title', 'authors', 'genres', 'description',
-            'pages', 'isbn', 'publisher', 'publisher_id',
-            'published_year', 'edition_type', 'cover_url',
-            'added_by', 'average_rating'
+            "id",
+            "title",
+            "authors",
+            "genres",
+            "cover_url",
+            "average_rating",
         ]
-
 
 # - REVIEWS
 

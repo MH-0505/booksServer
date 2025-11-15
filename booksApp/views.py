@@ -19,7 +19,7 @@ from .serializers import (
     ReviewSerializer, FollowSerializer, MessageSerializer,
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
     BookRankingSerializer, ActivitySerializer, RegisterSerializer, ProfileSerializer,
-    PublisherSerializer
+    PublisherSerializer, BookCompactSerializer
 )
 
 
@@ -73,12 +73,12 @@ class AuthorViewSet(viewsets.ModelViewSet):
 @permission_classes([permissions.IsAuthenticated])
 def add_author(request):
     first_name = request.data.get('first_name')
-    last_name = request.data.get('last_name')
+    last_name = request.data.get('last_name', '')
     bio = request.data.get('bio', '')
 
-    if not first_name or not last_name:
+    if not first_name:
         return Response(
-            {'error': 'Imię i nazwisko są wymagane.'},
+            {'error': 'Imię jest wymagane.'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
@@ -154,6 +154,12 @@ class BookViewSet(viewsets.ModelViewSet):
                 raise Exception(f"Błąd uploadu do Supabase: {response.text}")
 
         serializer.save(added_by=self.request.user, cover_url=cover_url)
+
+    @action(methods=['get'], detail=False)
+    def compact(self, request):
+        books = self.get_queryset()
+        serializer = BookCompactSerializer(books, many=True)
+        return Response(serializer.data)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
