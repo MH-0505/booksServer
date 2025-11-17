@@ -4,6 +4,7 @@ import uuid
 import requests
 
 from django.shortcuts import render
+from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
@@ -161,11 +162,29 @@ class BookViewSet(viewsets.ModelViewSet):
         serializer = BookCompactSerializer(books, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def in_library(self, request, pk=None):
+        user = request.user
+        book = self.get_object()
+
+        exists = UserLibrary.objects.filter(user=user, book=book).exists()
+        return Response({"in_library": exists})
+
+    @action(detail=True, methods=["get"], permission_classes=[permissions.IsAuthenticated])
+    def in_wishlist(self, request, pk=None):
+        user = request.user
+        book = self.get_object()
+
+        exists = Wishlist.objects.filter(user=user, book=book).exists()
+        return Response({"in_wishlist": exists})
+
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.select_related('user', 'book')
     serializer_class = ReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['user', 'book']
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
