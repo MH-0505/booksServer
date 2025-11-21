@@ -10,6 +10,8 @@ from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth.models import User
+
+from .filters import BookFilter
 from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
@@ -122,9 +124,10 @@ class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all().select_related('added_by').prefetch_related('authors', 'genres')
     serializer_class = BookSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'authors__last_name', 'genres__name']
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
+    search_fields = ['title', 'authors__last_name']
     ordering_fields = ['title', 'published_year']
+    filterset_class = BookFilter
 
     def perform_create(self, serializer):
         cover_file = self.request.FILES.get('coverFile')
@@ -158,8 +161,8 @@ class BookViewSet(viewsets.ModelViewSet):
 
     @action(methods=['get'], detail=False)
     def compact(self, request):
-        books = self.get_queryset()
-        serializer = BookCompactSerializer(books, many=True)
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = BookCompactSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=["get"], permission_classes=[permissions.IsAuthenticated])
