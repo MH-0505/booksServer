@@ -72,12 +72,7 @@ class Book(models.Model):
     cover_url = models.URLField(blank=True, null=True)
     added_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='added_books')
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def average_rating(self):
-        ratings = self.reviews.all()
-        if ratings.exists():
-            return round(sum(r.rating for r in ratings) / ratings.count(), 2)
-        return None
+    average_rating = models.FloatField(default=0.0)
 
     def __str__(self):
         return f"{self.title} ({self.get_edition_type_display()})"

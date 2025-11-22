@@ -126,7 +126,8 @@ class BookViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'authors__last_name']
-    ordering_fields = ['title', 'published_year']
+    ordering_fields = ['title', 'published_year', 'average_rating', 'created_at']
+    ordering = ['-created_at']
     filterset_class = BookFilter
 
     def perform_create(self, serializer):

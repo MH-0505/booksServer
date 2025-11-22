@@ -98,7 +98,7 @@ class BookSerializer(serializers.ModelSerializer):
                 'description', 'pages', 'isbn',
                 'publisher', 'publisher_id',
                 'published_year', 'edition_type', 'cover_url',
-                'added_by', 'average_rating'
+                'added_by', 'average_rating', 'created_at'
             ]
 
 class BookCompactSerializer(serializers.ModelSerializer):
