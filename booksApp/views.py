@@ -3,13 +3,13 @@ import os
 import uuid
 import requests
 
-from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
 
 from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth.models import User
+from django.db.models import Count
 
 from .filters import BookFilter
 from .models import (
@@ -17,17 +17,21 @@ from .models import (
     Message, UserLibrary, Wishlist, Listing,
     BookRanking, Activity, Publisher
 )
-from .serializers import (
+from booksApp.serializers_package.serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
     ReviewSerializer, FollowSerializer, MessageSerializer,
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
-    BookRankingSerializer, ActivitySerializer, RegisterSerializer, ProfileSerializer,
+    BookRankingSerializer, ActivitySerializer,
     PublisherSerializer, BookCompactSerializer
 )
+from .serializers_package.user_serializers import RegisterSerializer, ProfileSerializer
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related('profile').annotate(
+        followers_count=Count('followers', distinct=True),
+        following_count=Count('following', distinct=True)
+    )
     serializer_class = UserSerializer
 
 

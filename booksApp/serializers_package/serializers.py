@@ -1,46 +1,11 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import (
+from booksApp.models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
     BookRanking, Activity, Profile, Publisher
 )
-
-
-# - USERS
-
-class UserSerializer(serializers.ModelSerializer):
-    followers_count = serializers.IntegerField(source='followers.count', read_only=True)
-    following_count = serializers.IntegerField(source='following.count', read_only=True)
-    avatar = serializers.URLField(source='profile.avatar', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'followers_count', 'following_count', 'avatar']
-
-
-class RegisterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'password')
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data.get('email', ''),
-            password=validated_data['password']
-        )
-        return user
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
-    email = serializers.EmailField(source='user.email', read_only=True)
-
-    class Meta:
-        model = Profile
-        fields = ['id', 'username', 'email', 'avatar', 'bio']
+from booksApp.serializers_package.user_serializers import UserSerializer
 
 
 # - BOOKS DATA
@@ -151,20 +116,22 @@ class MessageSerializer(serializers.ModelSerializer):
 # - USER LIBRARY
 
 class UserLibrarySerializer(serializers.ModelSerializer):
-    book = BookSerializer(read_only=True)
+    book_id = serializers.PrimaryKeyRelatedField(source='book', queryset=Book.objects.all(), write_only=True)
+    book = BookCompactSerializer(read_only=True)
 
     class Meta:
         model = UserLibrary
-        fields = ['id', 'book', 'added_at']
+        fields = ['id', 'book', 'book_id', 'added_at']
 
 
 
 class WishlistSerializer(serializers.ModelSerializer):
-    book = BookSerializer(read_only=True)
+    book_id = serializers.PrimaryKeyRelatedField(source='book', queryset=Book.objects.all(), write_only=True)
+    book = BookCompactSerializer(read_only=True)
 
     class Meta:
         model = Wishlist
-        fields = ['id', 'book', 'added_at']
+        fields = ['id', 'book', 'book_id', 'added_at']
 
 
 # - OFFERS
