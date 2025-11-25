@@ -9,7 +9,7 @@ from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Min, Q
 
 from .filters import BookFilter
 from .models import (
@@ -130,9 +130,16 @@ class BookViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['title', 'authors__last_name']
-    ordering_fields = ['title', 'published_year', 'average_rating', 'created_at']
+    ordering_fields = ['title', 'published_year', 'average_rating', 'created_at', 'lowest_price']
     ordering = ['-created_at']
     filterset_class = BookFilter
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        return queryset.annotate(
+            lowest_price=Min('listings__price', filter=Q(listings__is_active=True)),
+            listings_count=Count('listings', filter=Q(listings__is_active=True))
+        )
 
     def perform_create(self, serializer):
         cover_file = self.request.FILES.get('coverFile')
@@ -244,9 +251,11 @@ class ListingViewSet(viewsets.ModelViewSet):
     queryset = Listing.objects.select_related('book', 'user')
     serializer_class = ListingSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter, DjangoFilterBackend]
     search_fields = ['book__title', 'description']
+    filterset_fields = ['book', 'user', 'listing_type', 'city']
     ordering_fields = ['created_at', 'price']
+    ordering = ['price']
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

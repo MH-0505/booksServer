@@ -146,14 +146,22 @@ class Wishlist(models.Model):
 class Listing(models.Model):
     SALE = 'sale'
     EXCHANGE = 'exchange'
+    USED = 'used'
+    NEW = 'new'
     LISTING_TYPES = [
         (SALE, 'Sprzedaż'),
         (EXCHANGE, 'Wymiana'),
     ]
+    CONDITION_TYPES = [
+        (USED, 'Używana'),
+        (NEW, 'Nowa'),
+    ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listings')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='listings')
-    listing_type = models.CharField(max_length=10, choices=LISTING_TYPES)
+    listing_type = models.CharField(max_length=10, choices=LISTING_TYPES, default=SALE)
+    condition = models.CharField(max_length=10, choices=CONDITION_TYPES, default=NEW)
+    city = models.CharField(max_length=100, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)

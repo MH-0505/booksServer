@@ -54,6 +54,11 @@ class BookSerializer(serializers.ModelSerializer):
         added_by = UserSerializer(read_only=True)
         average_rating = serializers.FloatField(read_only=True)
 
+        # Market data (annotated)
+        lowest_price = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
+        listings_count = serializers.IntegerField(read_only=True)
+
+
         class Meta:
             model = Book
             fields = [
@@ -63,13 +68,18 @@ class BookSerializer(serializers.ModelSerializer):
                 'description', 'pages', 'isbn',
                 'publisher', 'publisher_id',
                 'published_year', 'edition_type', 'cover_url',
-                'added_by', 'average_rating', 'created_at'
+                'added_by', 'average_rating', 'created_at',
+                'lowest_price', 'listings_count'
             ]
+
 
 class BookCompactSerializer(serializers.ModelSerializer):
     authors = serializers.StringRelatedField(many=True)
     genres = serializers.StringRelatedField(many=True)
     average_rating = serializers.FloatField(read_only=True)
+
+    lowest_price = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
+    listings_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Book
@@ -80,6 +90,8 @@ class BookCompactSerializer(serializers.ModelSerializer):
             "genres",
             "cover_url",
             "average_rating",
+            "lowest_price",
+            "listings_count"
         ]
 
 # - REVIEWS
@@ -137,14 +149,17 @@ class WishlistSerializer(serializers.ModelSerializer):
 # - OFFERS
 
 class ListingSerializer(serializers.ModelSerializer):
+    book_id = serializers.PrimaryKeyRelatedField(source='book', queryset=Book.objects.all(), write_only=True)
+
     user = UserSerializer(read_only=True)
-    book = BookSerializer(read_only=True)
+    book = BookCompactSerializer(read_only=True)
 
     class Meta:
         model = Listing
         fields = [
             'id', 'user', 'book', 'listing_type', 'price',
-            'description', 'is_active', 'created_at'
+            'description', 'is_active', 'created_at', 'book_id',
+            'city', 'condition'
         ]
 
 
