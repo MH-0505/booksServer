@@ -9,20 +9,22 @@ from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from django.db.models import Count, Min, Q
+from django.db.models import Count, Min, Q, Prefetch
 
 from .filters import BookFilter
 from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
-    BookRanking, Activity, Publisher
+    BookRanking, Activity, Publisher,
+    Conversation # Import Conversation
 )
 from booksApp.serializers_package.serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
     ReviewSerializer, FollowSerializer, MessageSerializer,
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
     BookRankingSerializer, ActivitySerializer,
-    PublisherSerializer, BookCompactSerializer
+    PublisherSerializer, BookCompactSerializer,
+    ConversationSerializer # Import ConversationSerializer
 )
 from .serializers_package.user_serializers import RegisterSerializer, ProfileSerializer
 
@@ -33,6 +35,8 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
         following_count=Count('following', distinct=True)
     )
     serializer_class = UserSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
 
 
 class RegisterView(generics.CreateAPIView):
@@ -214,13 +218,54 @@ class FollowViewSet(viewsets.ModelViewSet):
         serializer.save(follower=self.request.user)
 
 
+class ConversationViewSet(viewsets.ModelViewSet):
+    serializer_class = ConversationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Conversation.objects.filter(participants=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        target_user_id = request.data.get('target_user_id')
+        
+        if not target_user_id:
+            return Response({'error': 'target_user_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        me = request.user
+        try:
+            target_user = User.objects.get(id=target_user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Sprawdzamy czy istnieje rozmowa zawierająca DOKŁADNIE tych dwóch uczestników
+        existing_conversation = Conversation.objects.filter(participants=me).filter(participants=target_user).first()
+
+        if existing_conversation:
+            return Response(self.get_serializer(existing_conversation).data)
+
+        # Jeśli nie istnieje, tworzymy nową
+        conversation = Conversation.objects.create()
+        conversation.participants.add(me, target_user)
+        
+        return Response(self.get_serializer(conversation).data, status=status.HTTP_201_CREATED)
+
+
 class MessageViewSet(viewsets.ModelViewSet):
-    queryset = Message.objects.select_related('sender', 'receiver')
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        # Pozwala filtrować wiadomości po ID rozmowy: /api/messages/?conversation=5
+        queryset = Message.objects.filter(conversation__participants=self.request.user)
+        conversation_id = self.request.query_params.get('conversation')
+        if conversation_id:
+            queryset = queryset.filter(conversation_id=conversation_id)
+        return queryset
+
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
+        conversation = serializer.validated_data['conversation']
+        conversation.save()
 
 
 class UserLibraryViewSet(viewsets.ModelViewSet):
@@ -241,7 +286,13 @@ class WishlistViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        books_queryset = Book.objects.annotate(
+            lowest_price=Min('listings__price', filter=Q(listings__is_active=True)),
+            listings_count=Count('listings', filter=Q(listings__is_active=True))
+        )
+        return self.queryset.filter(user=self.request.user).prefetch_related(
+            Prefetch('book', queryset=books_queryset)
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

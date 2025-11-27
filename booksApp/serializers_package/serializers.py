@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 from booksApp.models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
-    BookRanking, Activity, Profile, Publisher
+    BookRanking, Activity, Profile, Publisher,
+    Conversation  # Dodajemy import Conversation
 )
 from booksApp.serializers_package.user_serializers import UserSerializer
 
@@ -94,6 +95,7 @@ class BookCompactSerializer(serializers.ModelSerializer):
             "listings_count"
         ]
 
+
 # - REVIEWS
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -103,6 +105,23 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ['id', 'user', 'book', 'rating', 'content', 'created_at']
+
+
+# - OFFERS
+
+class ListingSerializer(serializers.ModelSerializer):
+    book_id = serializers.PrimaryKeyRelatedField(source='book', queryset=Book.objects.all(), write_only=True)
+
+    user = UserSerializer(read_only=True)
+    book = BookCompactSerializer(read_only=True)
+
+    class Meta:
+        model = Listing
+        fields = [
+            'id', 'user', 'book', 'listing_type', 'price',
+            'description', 'is_active', 'created_at', 'book_id',
+            'city', 'condition'
+        ]
 
 
 # - SOCIALS
@@ -118,11 +137,45 @@ class FollowSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
-    receiver = UserSerializer(read_only=True)
+    
+    # Pola do odczytu (zagnieżdżone obiekty)
+    book = BookCompactSerializer(read_only=True)
+    listing = ListingSerializer(read_only=True)
+
+    # Pola do zapisu (tylko ID)
+    book_id = serializers.PrimaryKeyRelatedField(
+        source='book', queryset=Book.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    listing_id = serializers.PrimaryKeyRelatedField(
+        source='listing', queryset=Listing.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    conversation_id = serializers.PrimaryKeyRelatedField(
+        source='conversation', queryset=Conversation.objects.all(), write_only=True
+    )
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'receiver', 'content', 'timestamp', 'is_read']
+        fields = [
+            'id', 'conversation_id', 'sender', 'content', 
+            'timestamp', 'is_read', 
+            'book', 'book_id', 
+            'listing', 'listing_id'
+        ]
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    participants = UserSerializer(many=True, read_only=True)
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ['id', 'participants', 'updated_at', 'last_message']
+
+    def get_last_message(self, obj):
+        last_msg = obj.messages.last()
+        if last_msg:
+            return MessageSerializer(last_msg).data
+        return None
 
 
 # - USER LIBRARY
@@ -144,23 +197,6 @@ class WishlistSerializer(serializers.ModelSerializer):
     class Meta:
         model = Wishlist
         fields = ['id', 'book', 'book_id', 'added_at']
-
-
-# - OFFERS
-
-class ListingSerializer(serializers.ModelSerializer):
-    book_id = serializers.PrimaryKeyRelatedField(source='book', queryset=Book.objects.all(), write_only=True)
-
-    user = UserSerializer(read_only=True)
-    book = BookCompactSerializer(read_only=True)
-
-    class Meta:
-        model = Listing
-        fields = [
-            'id', 'user', 'book', 'listing_type', 'price',
-            'description', 'is_active', 'created_at', 'book_id',
-            'city', 'condition'
-        ]
 
 
 # - RANKING

@@ -77,6 +77,36 @@ class Book(models.Model):
     def __str__(self):
         return f"{self.title} ({self.get_edition_type_display()})"
 
+# --- LISTING MODELS
+
+class Listing(models.Model):
+    SALE = 'sale'
+    EXCHANGE = 'exchange'
+    USED = 'used'
+    NEW = 'new'
+    LISTING_TYPES = [
+        (SALE, 'Sprzedaż'),
+        (EXCHANGE, 'Wymiana'),
+    ]
+    CONDITION_TYPES = [
+        (USED, 'Używana'),
+        (NEW, 'Nowa'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listings')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='listings')
+    listing_type = models.CharField(max_length=10, choices=LISTING_TYPES, default=SALE)
+    condition = models.CharField(max_length=10, choices=CONDITION_TYPES, default=NEW)
+    city = models.CharField(max_length=100, blank=True)
+    price = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.book.title} ({self.listing_type}) by {self.user.username}"
+
+
 
 # --- SOCIAL MODELS
 
@@ -107,18 +137,32 @@ class Follow(models.Model):
         return f"{self.follower} → {self.following}"
 
 
+class Conversation(models.Model):
+    participants = models.ManyToManyField(User, related_name='conversations')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return f"Rozmowa {self.pk}"
+
 class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='messages')
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, null=True)
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, null=True)
+
     class Meta:
-        ordering = ['-timestamp']
+        ordering = ['timestamp']
 
     def __str__(self):
-        return f"From {self.sender} to {self.receiver}"
+        return f"Message {self.pk} in {self.conversation}"
 
 
 # --- USER LIBRARY MODELS
@@ -139,36 +183,6 @@ class Wishlist(models.Model):
 
     class Meta:
         unique_together = ('user', 'book')
-
-
-# --- LISTING MODELS
-
-class Listing(models.Model):
-    SALE = 'sale'
-    EXCHANGE = 'exchange'
-    USED = 'used'
-    NEW = 'new'
-    LISTING_TYPES = [
-        (SALE, 'Sprzedaż'),
-        (EXCHANGE, 'Wymiana'),
-    ]
-    CONDITION_TYPES = [
-        (USED, 'Używana'),
-        (NEW, 'Nowa'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='listings')
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='listings')
-    listing_type = models.CharField(max_length=10, choices=LISTING_TYPES, default=SALE)
-    condition = models.CharField(max_length=10, choices=CONDITION_TYPES, default=NEW)
-    city = models.CharField(max_length=100, blank=True)
-    price = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
-    description = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.book.title} ({self.listing_type}) by {self.user.username}"
 
 
 # --- ADDITIONAL MODELS
