@@ -172,9 +172,9 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = ['id', 'participants', 'updated_at', 'last_message']
 
     def get_last_message(self, obj):
-        last_msg = obj.messages.last()
-        if last_msg:
-            return MessageSerializer(last_msg).data
+        messages = list(obj.messages.all())
+        if messages:
+            return MessageSerializer(messages[-1]).data
         return None
 
 

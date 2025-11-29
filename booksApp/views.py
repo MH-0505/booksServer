@@ -223,7 +223,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Conversation.objects.filter(participants=self.request.user)
+        return Conversation.objects.filter(participants=self.request.user).prefetch_related('messages')
 
     def create(self, request, *args, **kwargs):
         target_user_id = request.data.get('target_user_id')
@@ -262,10 +262,27 @@ class MessageViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(conversation_id=conversation_id)
         return queryset
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         serializer.save(sender=self.request.user)
         conversation = serializer.validated_data['conversation']
         conversation.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'])
+    def mark_read(self, request, pk=None):
+        message = self.get_object()
+
+        if message.sender == request.user:
+            return Response(
+                {'error': 'Użytkownik nie może oznaczyć własnej wiadomości jako przeczytanej.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        message.is_read = True
+        message.save()
+        return Response({'status': 'marked as read', 'is_read': True})
 
 
 class UserLibraryViewSet(viewsets.ModelViewSet):
