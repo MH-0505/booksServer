@@ -16,7 +16,7 @@ from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
     BookRanking, Activity, Publisher,
-    Conversation # Import Conversation
+    Conversation, ExchangeOffer  # Import Conversation
 )
 from booksApp.serializers_package.serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
@@ -24,7 +24,7 @@ from booksApp.serializers_package.serializers import (
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
     BookRankingSerializer, ActivitySerializer,
     PublisherSerializer, BookCompactSerializer,
-    ConversationSerializer # Import ConversationSerializer
+    ConversationSerializer, ExchangeOfferSerializer  # Import ConversationSerializer
 )
 from .serializers_package.user_serializers import RegisterSerializer, ProfileSerializer
 
@@ -327,6 +327,100 @@ class ListingViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class ExchangeOfferViewSet(viewsets.ModelViewSet):
+    serializer_class = ExchangeOfferSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ExchangeOffer.objects.filter(
+            Q(user_a=self.request.user) | Q(user_b=self.request.user)
+        ).select_related('user_a', 'user_b', 'book_a', 'chosen_book_b').prefetch_related('books_b')
+
+    def perform_create(self, serializer):
+        exchange_offer = serializer.save(user_b=self.request.user)
+
+        user_a = exchange_offer.user_a
+        user_b = exchange_offer.user_b
+
+        conversation = Conversation.objects.filter(participants=user_a).filter(participants=user_b).first()
+        if not conversation:
+            conversation = Conversation.objects.create()
+            conversation.participants.add(user_a, user_b)
+
+        Message.objects.create(
+            conversation=conversation,
+            sender=self.request.user,
+            content="oferta wymiany",
+            exchange_offer=exchange_offer
+        )
+
+    @action(detail=True, methods=['post'])
+    def choose_book(self, request, pk=None):
+        """
+        User A wybiera książkę z listy proponowanej przez Usera B i wstępnie akceptuje ofertę.
+        """
+        offer = self.get_object()
+
+        if request.user != offer.user_a:
+            return Response({'error': 'Tylko właściciel oferty (User A) może wybrać książkę.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if offer.rejected:
+            return Response({'error': 'Ta oferta została już odrzucona.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        chosen_book_id = request.data.get('book_id')
+        if not chosen_book_id:
+            return Response({'error': 'Wymagane podanie book_id.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not offer.books_b.filter(id=chosen_book_id).exists():
+            return Response({'error': 'Wybrana książka nie znajduje się w ofercie.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        chosen_book = Book.objects.get(id=chosen_book_id)
+        offer.chosen_book_b = chosen_book
+        offer.accepted_a = True
+        offer.save()
+
+        return Response(self.get_serializer(offer).data)
+
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        """
+        User B widzi, że A wybrał książkę i ostatecznie potwierdza wymianę.
+        """
+        offer = self.get_object()
+
+        if request.user != offer.user_b:
+            return Response({'error': 'Tylko inicjator wymiany (User B) może ostatecznie potwierdzić.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        if not offer.accepted_a or not offer.chosen_book_b:
+            return Response({'error': 'User A jeszcze nie zaakceptował oferty lub nie wybrał książki.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if offer.rejected:
+            return Response({'error': 'Oferta została odrzucona.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        offer.accepted_b = True
+        offer.save()
+
+        return Response(self.get_serializer(offer).data)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """
+        Odrzucenie oferty przez którąkolwiek ze stron.
+        """
+        offer = self.get_object()
+
+        if request.user not in [offer.user_a, offer.user_b]:
+            return Response({'error': 'Brak uprawnień do tej oferty.'}, status=status.HTTP_403_FORBIDDEN)
+
+        offer.rejected = True
+        offer.save()
+        return Response(self.get_serializer(offer).data)
 
 
 class BookRankingViewSet(viewsets.ReadOnlyModelViewSet):

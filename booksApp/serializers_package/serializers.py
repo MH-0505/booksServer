@@ -4,7 +4,7 @@ from booksApp.models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
     BookRanking, Activity, Profile, Publisher,
-    Conversation  # Dodajemy import Conversation
+    Conversation, ExchangeOffer  # Dodajemy import Conversation
 )
 from booksApp.serializers_package.user_serializers import UserSerializer
 
@@ -120,8 +120,40 @@ class ListingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'book', 'listing_type', 'price',
             'description', 'is_active', 'created_at', 'book_id',
-            'city', 'condition'
+            'city', 'condition', 'allow_exchange'
         ]
+
+class ExchangeOfferSerializer(serializers.ModelSerializer):
+    user_a = UserSerializer(read_only=True)
+    user_b = UserSerializer(read_only=True)
+    book_a = BookCompactSerializer(read_only=True)
+    books_b = BookCompactSerializer(many=True, read_only=True)
+    chosen_book_b = BookCompactSerializer(read_only=True)
+
+    # write
+    user_a_id = serializers.PrimaryKeyRelatedField(source='user_a', queryset=User.objects.all(), write_only=True)
+    book_a_id = serializers.PrimaryKeyRelatedField(source='book_a', queryset=Book.objects.all(), write_only=True)
+    books_b_ids = serializers.PrimaryKeyRelatedField(
+        source='books_b', queryset=Book.objects.all(), many=True, write_only=True
+    )
+    chosen_book_b_id = serializers.PrimaryKeyRelatedField(
+        source='chosen_book_b', queryset=Book.objects.all(),
+        write_only=True, required=False, allow_null=True
+    )
+
+    class Meta:
+        model = ExchangeOffer
+        fields = [
+            'id',
+            'user_a', 'user_a_id',
+            'user_b',
+            'book_a', 'book_a_id',
+            'books_b', 'books_b_ids',
+            'chosen_book_b', 'chosen_book_b_id',
+            'accepted_a', 'accepted_b', 'rejected',
+            'created_at'
+        ]
+        read_only_fields = ['accepted_a', 'accepted_b', 'rejected', 'created_at', 'user_b']
 
 
 # - SOCIALS
@@ -138,16 +170,20 @@ class FollowSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     
-    # Pola do odczytu (zagnieżdżone obiekty)
+    # read
     book = BookCompactSerializer(read_only=True)
     listing = ListingSerializer(read_only=True)
+    exchange_offer = ExchangeOfferSerializer(read_only=True)
 
-    # Pola do zapisu (tylko ID)
+    # write
     book_id = serializers.PrimaryKeyRelatedField(
         source='book', queryset=Book.objects.all(), write_only=True, required=False, allow_null=True
     )
     listing_id = serializers.PrimaryKeyRelatedField(
         source='listing', queryset=Listing.objects.all(), write_only=True, required=False, allow_null=True
+    )
+    exchange_offer_id = serializers.PrimaryKeyRelatedField(
+        source='exchange_offer', queryset=ExchangeOffer.objects.all(), write_only=True, required=False, allow_null=True
     )
     conversation_id = serializers.PrimaryKeyRelatedField(
         source='conversation', queryset=Conversation.objects.all(), write_only=True
@@ -159,7 +195,8 @@ class MessageSerializer(serializers.ModelSerializer):
             'id', 'conversation_id', 'sender', 'content', 
             'timestamp', 'is_read', 
             'book', 'book_id', 
-            'listing', 'listing_id'
+            'listing', 'listing_id',
+            'exchange_offer', 'exchange_offer_id'
         ]
 
 

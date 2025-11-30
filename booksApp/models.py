@@ -100,6 +100,7 @@ class Listing(models.Model):
     city = models.CharField(max_length=100, blank=True)
     price = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     description = models.TextField(blank=True)
+    allow_exchange = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -107,6 +108,20 @@ class Listing(models.Model):
         return f"{self.book.title} ({self.listing_type}) by {self.user.username}"
 
 
+class ExchangeOffer(models.Model):
+    book_a = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='offers_a')
+    books_b = models.ManyToManyField(Book, related_name='offers_b')
+    chosen_book_b = models.ForeignKey(Book, on_delete=models.SET_NULL, null=True, related_name='chosen_offer_b')
+    user_a = models.ForeignKey(User, on_delete=models.CASCADE, related_name='offers_a_users')
+    user_b = models.ForeignKey(User, on_delete=models.CASCADE, related_name='offers_b_users')
+    accepted_a = models.BooleanField(default=False)
+    accepted_b = models.BooleanField(default=False)
+    rejected = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+    def __str__(self):
+        return f"exchange offer between {self.user_a.username} and {self.user_b.username}"
 
 # --- SOCIAL MODELS
 
@@ -157,6 +172,7 @@ class Message(models.Model):
 
     book = models.ForeignKey(Book, on_delete=models.CASCADE, null=True)
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, null=True)
+    exchange_offer = models.ForeignKey(ExchangeOffer, on_delete=models.CASCADE, null=True)
 
     class Meta:
         ordering = ['timestamp']

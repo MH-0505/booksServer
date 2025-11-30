@@ -18,6 +18,7 @@ router.register(r'messages', views.MessageViewSet, basename='message')
 router.register(r'library', views.UserLibraryViewSet)
 router.register(r'wishlist', views.WishlistViewSet)
 router.register(r'listings', views.ListingViewSet)
+router.register(r'exchange-offers', views.ExchangeOfferViewSet, basename='exchange-offer')
 router.register(r'rankings', views.BookRankingViewSet)
 router.register(r'activities', views.ActivityViewSet)
 
