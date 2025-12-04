@@ -53,7 +53,32 @@ def me(request):
         "id": user.id,
         "username": user.username,
         "email": user.email,
+        "avatar": user.profile.avatar
     })
+
+def upload_avatar_to_supabase(user_id, avatar_file):
+    supabase_url = os.getenv('SUPABASE_URL')
+    supabase_bucket = os.getenv('SUPABASE_BUCKET', 'avatars')
+    supabase_key = os.getenv('SUPABASE_KEY')
+
+    filename = f"{user_id}_{uuid.uuid4()}_{avatar_file.name}"
+    upload_url = f"{supabase_url}/storage/v1/object/{supabase_bucket}/{filename}"
+
+    content_type, _ = mimetypes.guess_type(avatar_file.name)
+    if content_type is None:
+        content_type = "application/octet-stream"
+
+    headers = {
+        "Authorization": f"Bearer {supabase_key}",
+        "Content-Type": content_type,
+    }
+
+    response = requests.post(upload_url, headers=headers, data=avatar_file.read())
+
+    if response.status_code in (200, 201):
+        return f"{supabase_url}/storage/v1/object/public/{supabase_bucket}/{filename}"
+    else:
+        raise Exception(f"Błąd uploadu do Supabase: {response.text}")
 
 
 @api_view(['GET', 'PUT'])
@@ -68,7 +93,17 @@ def profile_view(request):
     elif request.method == 'PUT':
         serializer = ProfileSerializer(profile, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            avatar_file = request.FILES.get('avatarFile')
+            save_kwargs = {}
+
+            if avatar_file:
+                try:
+                    avatar_url = upload_avatar_to_supabase(request.user.id, avatar_file)
+                    save_kwargs['avatar'] = avatar_url
+                except Exception as e:
+                    return Response({'detail': str(e)}, status=400)
+
+            serializer.save(**save_kwargs)
             return Response(serializer.data)
         return Response(serializer.errors, status=400)
 
@@ -475,48 +510,3 @@ def upload_cover(request):
 
     return Response({'url': public_url}, status=status.HTTP_201_CREATED)
 
-
-@api_view(['POST'])
-@permission_classes([permissions.IsAuthenticated])
-def upload_avatar(request):
-    """
-    Uploaduje zdjęcie profilowe do Supabase Storage
-    """
-    file = request.FILES.get('file')
-    if not file:
-        return Response({'error': 'Brak pliku'}, status=status.HTTP_400_BAD_REQUEST)
-
-    SUPABASE_URL = os.getenv('SUPABASE_URL')
-    SUPABASE_BUCKET = os.getenv('SUPABASE_AVATAR_BUCKET', 'avatars')
-    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
-
-    filename = f"{uuid.uuid4()}_{file.name}"
-    upload_url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{filename}"
-
-    content_type, _ = mimetypes.guess_type(file.name)
-    if content_type is None:
-        content_type = "application/octet-stream"
-
-    headers = {
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": content_type,
-    }
-
-    response = requests.post(upload_url, headers=headers, data=file.read())
-
-    if response.status_code not in (200, 201):
-        return Response(
-            {
-                'error': 'Nie udało się wysłać pliku',
-                'details': response.text
-            },
-            status=response.status_code
-        )
-
-    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{filename}"
-
-    profile = request.user.profile
-    profile.avatar = public_url
-    profile.save()
-
-    return Response({'avatar_url': public_url}, status=status.HTTP_201_CREATED)

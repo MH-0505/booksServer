@@ -8,10 +8,11 @@ class UserSerializer(serializers.ModelSerializer):
     followers_count = serializers.IntegerField(read_only=True)
     following_count = serializers.IntegerField(read_only=True)
     avatar = serializers.URLField(source='profile.avatar', read_only=True)
+    bio = serializers.CharField(source='profile.bio', read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'followers_count', 'following_count', 'avatar']
+        fields = ['id', 'username', 'email', 'followers_count', 'following_count', 'avatar', 'bio']
 
 
 class RegisterSerializer(serializers.ModelSerializer):
