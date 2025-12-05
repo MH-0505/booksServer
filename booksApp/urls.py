@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from booksApp import views
-from booksApp.views import upload_cover, RegisterView, me, profile_view, upload_avatar, add_author
+from booksApp.views import RegisterView, me, profile_view, add_author
 
 router = DefaultRouter()
 router.register(r'users', views.UserViewSet)
@@ -30,7 +30,5 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('me/', me, name='me'),
     path('profile/', profile_view, name='profile'),
-    path('upload-avatar/', upload_avatar, name='upload-avatar'),
-    path('upload-cover/', upload_cover, name='upload-cover'),
     path('authors/add', add_author, name='add-author'),
 ]

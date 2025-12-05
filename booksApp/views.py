@@ -323,10 +323,16 @@ class MessageViewSet(viewsets.ModelViewSet):
 class UserLibraryViewSet(viewsets.ModelViewSet):
     queryset = UserLibrary.objects.all()
     serializer_class = UserLibrarySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     def get_queryset(self):
-        return self.queryset.filter(user=self.request.user)
+        user_id = self.request.query_params.get('user')
+        if user_id and self.request.method in permissions.SAFE_METHODS:
+            return self.queryset.filter(user=user_id)
+
+        if self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user)
+        return self.queryset.none()
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
