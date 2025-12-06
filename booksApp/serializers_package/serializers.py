@@ -79,14 +79,7 @@ class BookCompactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = [
-            "id",
-            "title",
-            "authors",
-            "genres",
-            "cover_url",
-            "average_rating",
-            "lowest_price",
-            "listings_count"
+            'id', 'title', 'authors', 'genres', 'cover_url', 'average_rating', 'lowest_price', 'listings_count'
         ]
 
 

@@ -16,7 +16,7 @@ from .models import (
     Author, Genre, Book, Review, Follow,
     Message, UserLibrary, Wishlist, Listing,
     BookRanking, Activity, Publisher,
-    Conversation, ExchangeOffer  # Import Conversation
+    Conversation, ExchangeOffer
 )
 from booksApp.serializers_package.serializers import (
     UserSerializer, AuthorSerializer, GenreSerializer, BookSerializer,
@@ -24,7 +24,7 @@ from booksApp.serializers_package.serializers import (
     UserLibrarySerializer, WishlistSerializer, ListingSerializer,
     BookRankingSerializer, ActivitySerializer,
     PublisherSerializer, BookCompactSerializer,
-    ConversationSerializer, ExchangeOfferSerializer  # Import ConversationSerializer
+    ConversationSerializer, ExchangeOfferSerializer
 )
 from .serializers_package.user_serializers import RegisterSerializer, ProfileSerializer
 
