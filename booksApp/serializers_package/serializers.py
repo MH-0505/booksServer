@@ -59,18 +59,12 @@ class BookSerializer(serializers.ModelSerializer):
         lowest_price = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
         listings_count = serializers.IntegerField(read_only=True)
 
-
         class Meta:
             model = Book
             fields = [
-                'id', 'title',
-                'authors', 'genres',
-                'author_ids', 'genre_ids',
-                'description', 'pages', 'isbn',
-                'publisher', 'publisher_id',
-                'published_year', 'edition_type', 'cover_url',
-                'added_by', 'average_rating', 'created_at',
-                'lowest_price', 'listings_count'
+                'id', 'title','authors', 'genres','author_ids', 'genre_ids', 'description',
+                'pages', 'isbn', 'publisher', 'publisher_id', 'published_year', 'edition_type',
+                'cover_url', 'added_by', 'average_rating', 'created_at', 'lowest_price', 'listings_count'
             ]
 
 

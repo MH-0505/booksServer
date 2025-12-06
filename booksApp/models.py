@@ -21,7 +21,6 @@ class Author(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
-
 class Genre(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
@@ -63,12 +62,7 @@ class Book(models.Model):
     isbn = models.CharField(max_length=13, unique=True)
     publisher = models.ForeignKey('Publisher', on_delete=models.SET_NULL, null=True, related_name='books')
     published_year = models.PositiveIntegerField(blank=True, null=True)
-    edition_type = models.CharField(
-        max_length=20,
-        choices=EDITION_TYPES,
-        default=HARDCOVER,
-        verbose_name='Typ wydania'
-    )
+    edition_type = models.CharField(max_length=20, choices=EDITION_TYPES, default=HARDCOVER, verbose_name='Typ wydania')
     cover_url = models.URLField(blank=True, null=True)
     added_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, related_name='added_books')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -190,7 +184,6 @@ class UserLibrary(models.Model):
 
     class Meta:
         unique_together = ('user', 'book')
-
 
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='wishlist')
