@@ -62,10 +62,12 @@ class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = [
-            'id', 'title','authors', 'genres','author_ids', 'genre_ids',
-            'description', 'pages', 'isbn', 'publisher', 'publisher_id',
-            'published_year', 'edition_type', 'cover_url', 'added_by',
-            'average_rating', 'created_at', 'lowest_price', 'listings_count'
+            'id', 'title','authors', 'genres','author_ids',
+            'genre_ids', 'description', 'pages', 'isbn',
+            'publisher', 'publisher_id','published_year',
+            'edition_type', 'cover_url', 'added_by',
+            'average_rating', 'created_at', 'lowest_price',
+            'listings_count'
         ]
 
 
@@ -80,7 +82,8 @@ class BookCompactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = [
-            'id', 'title', 'authors', 'genres', 'cover_url', 'average_rating', 'lowest_price', 'listings_count'
+            'id', 'title', 'authors', 'genres', 'cover_url',
+            'average_rating', 'lowest_price', 'listings_count'
         ]
 
 
