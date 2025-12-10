@@ -27,7 +27,7 @@
     ALLOWED_HOSTS=localhost,127.0.0.1
     
     # baza danych, można użyć poniższych zmiennych lub analogicznie skonfigurować swoją bazę danych 
-    DATABASE_URL=postgresql://postgres.jfjvwsnouwdadynxodwv:***REMOVED***@aws-1-eu-central-1.pooler.supabase.com:5432/postgres
+    DATABASE_URL=postgresql://postgres.jfjvwsnouwdadynxodwv:<HASŁO>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres
     SUPABASE_URL=https://jfjvwsnouwdadynxodwv.supabase.co
     SUPABASE_KEY=<prywatny klucz supabase>    # można zostawić puste, wymagane tylko do przesyłania obrazów do bazy
     SUPABASE_COVERS_BUCKET=covers
